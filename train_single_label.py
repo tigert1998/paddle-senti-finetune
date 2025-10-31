@@ -167,7 +167,7 @@ def train(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("Training ERNIE model")
+    parser = argparse.ArgumentParser("Training ERNIE model for single label")
     parser.add_argument("--dataset-path")
     args = parser.parse_args()
 
