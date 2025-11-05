@@ -33,13 +33,17 @@ def preprocess_csri_content_page_dataset(dataset_path, train_ratio):
         f = open(osp.join(dataset_path, f"{split}.txt"), "w", encoding="utf-8")
         for i in split_indices:
             text = (
-                "Title: "
-                + str(df.iloc[i]["title"])
-                + "; Description: "
-                + str(df.iloc[i]["description"])
-                + "; Keywords: "
-                + str(df.iloc[i]["keywords"])
-            ).replace("\n", "<br>")
+                (
+                    "Title: "
+                    + str(df.iloc[i]["title"])
+                    + "; Description: "
+                    + str(df.iloc[i]["description"])
+                    + "; Keywords: "
+                    + str(df.iloc[i]["keywords"])
+                )
+                .replace("\n", "<newline>")
+                .replace("\t", "<tab>")
+            )
             label = df.iloc[i]["first_level"] + "##" + df.iloc[i]["second_level"]
             f.write(f"{text}\t{label}\n")
         f.close()

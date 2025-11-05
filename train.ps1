@@ -1,3 +1,21 @@
-python applications/text_classification/hierarchical/train.py `
-    --dataset_dir "C:/Users/tiger/Projects/datasets/hierarchical_data" `
-    --model_name "ernie-3.0-medium-zh"
+$dataset_path = "C:/Users/tiger/Projects/datasets/hierarchical_data"
+python applications/text_classification/multi_class/train.py `
+    --model_name_or_path "ernie-3.0-medium-zh" `
+    --train_path $dataset_path/train.txt `
+    --dev_path $dataset_path/dev.txt `
+    --test_path $dataset_path/dev.txt `
+    --label_path $dataset_path/label.txt `
+    --output_dir checkpoint `
+    --do_train `
+    --do_eval `
+    --num_train_epochs 10 `
+    --learning_rate 3e-5 `
+    --max_length 128 `
+    --per_device_eval_batch_size 32 `
+    --per_device_train_batch_size 32 `
+    --metric_for_best_model accuracy `
+    --load_best_model_at_end `
+    --logging_steps 64 `
+    --evaluation_strategy epoch `
+    --save_strategy epoch `
+    --save_total_limit 1
