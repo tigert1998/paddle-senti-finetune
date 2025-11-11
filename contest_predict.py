@@ -9,16 +9,9 @@
 # 项目名称:客户标签画像分析
 
 ###请在这里import想调用的库
-import functools
-import os
-
 import numpy as np
 
-import paddle.nn.functional as F
-from paddle.io import BatchSampler, DataLoader
-from applications.text_classification.hierarchical.utils import preprocess_function
-from paddlenlp.data import DataCollatorWithPadding
-from paddlenlp.datasets import load_dataset
+import paddle
 from paddlenlp.transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -151,56 +144,19 @@ class Predictor:
         Predicts the data labels.
         """
 
-        data_ds = load_dataset(
-            read_texts_dataset, texts=[data], is_test=True, lazy=False
+        tokenize_result = self.tokenizer(
+            data, padding="max_length", max_length=self.max_seq_length, truncation=True
         )
-        # with open(os.path.join(args.dataset_dir, args.data_file)) as f:
-        #     texts = f.readlines()
-        #
-        # data_ds = load_dataset(
-        #     read_texts_dataset, texts=texts, is_test=True, lazy=False
-        # )
+        input_ids = paddle.to_tensor(tokenize_result["input_ids"])[None, :]
+        token_type_ids = paddle.to_tensor(tokenize_result["token_type_ids"])[None, :]
 
-        trans_func = functools.partial(
-            preprocess_function,
-            tokenizer=self.tokenizer,
-            max_seq_length=self.max_seq_length,
-            label_nums=len(self.label_list),
-            is_test=True,
-        )
-
-        data_ds = data_ds.map(trans_func)
-        # batchify dataset
-        collate_fn = DataCollatorWithPadding(self.tokenizer)
-        data_batch_sampler = BatchSampler(
-            data_ds, batch_size=self.batch_size, shuffle=False
-        )
-
-        data_data_loader = DataLoader(
-            dataset=data_ds, batch_sampler=data_batch_sampler, collate_fn=collate_fn
-        )
-        results = []
         self.model.eval()
-        for batch in data_data_loader:
-            logits = self.model(**batch)
-            pred = np.argmax(logits.numpy(), axis=1).tolist()
-            pred = [self.label_list[i] for i in pred]
-            results.append(pred)
+        with paddle.no_grad():
+            logits = self.model(input_ids, token_type_ids=token_type_ids)
+        pred = np.argmax(logits.numpy(), axis=-1)[0]
+        label = self.label_list[pred]
 
-            for t, labels in zip(data_ds.data, results):
-                hierarchical_labels = {}
-                # logger.info("text: {}".format(t["sentence"]))
-                # logger.info("prediction result: {}".format(",".join(labels)))
-                for label in labels:
-                    for i, l in enumerate(label.split("##")):
-                        if i not in hierarchical_labels:
-                            hierarchical_labels[i] = []
-                        if l not in hierarchical_labels[i]:
-                            hierarchical_labels[i].append(l)
-                # for d in range(len(hierarchical_labels)):
-                # logger.info("level {} : {}".format(d + 1, ",".join(hierarchical_labels[d])))
-                # logger.info("--------------------")
-        return hierarchical_labels
+        return {i: [s] for i, s in enumerate(label.split("##"))}
 
 
 ### 获取异常文件+行号+信息
@@ -220,7 +176,7 @@ if __name__ == "__main__":
     predictor = Predictor()
     ret, err_message = predictor.InitModel()
     if ret:
-        text = r"""11月6日上午，习近平在海南省三亚市听取海南自由贸易港建设工作汇报。一支视频回顾2018年4月在庆祝海南建省办经济特区30周年大会上，总书记对海南寄予的厚望。 标签"""
+        text = r'“游戏风云”频道（Gamefy）成立于2004年，是游戏类内容付费电视频道。同年12月开始试播。频道以"弘扬健康游戏文化，服务广大游戏受众"为理念， "游我所爱，任我风云"  标签'
         detect_result = predictor.Detect(text)
         print("detect_result", detect_result)
     else:
